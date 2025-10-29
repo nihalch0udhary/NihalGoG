@@ -1,16 +1,4 @@
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.20;
-
-/**
- * @title TrustOrb
- * @dev A decentralized trust and reputation system where users can rate others on-chain.
- */
-contract TrustOrb {
-    struct Rating {
-        uint256 id;
-        address rater;
-        address ratedUser;
-        uint8 score; // Rating between 1 and 5
+Rating between 1 and 5
         string feedback;
     }
 
@@ -62,3 +50,6 @@ contract TrustOrb {
         return (r.rater, r.ratedUser, r.score, r.feedback);
     }
 }
+// 
+update
+// 
