@@ -1,55 +1,90 @@
-Rating between 1 and 5
-        string feedback;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.26;
+
+/**
+ * @title TrustOrb
+ * @notice A decentralized reputation and trust verification system 
+ *         where users can build, view, and endorse reputations transparently on-chain.
+ */
+contract Project {
+    address public admin;
+    uint256 public userCount;
+
+    struct UserProfile {
+        uint256 id;
+        address userAddress;
+        string name;
+        uint256 trustScore;
+        uint256 endorsements;
+        bool registered;
     }
 
-    mapping(uint256 => Rating) public ratings;
-    mapping(address => uint256[]) public userRatings;
-    uint256 public totalRatings;
+    mapping(address => UserProfile) public users;
 
-    event RatingSubmitted(uint256 indexed id, address indexed rater, address indexed ratedUser, uint8 score, string feedback);
+    event UserRegistered(uint256 indexed id, address indexed user, string name);
+    event TrustEndorsed(address indexed endorser, address indexed target, uint256 newScore);
+    event TrustScoreUpdated(address indexed user, uint256 newScore);
 
-    /**
-     * @dev Submit a rating for a user.
-     * @param _ratedUser Address of the user being rated.
-     * @param _score Rating score (1 to 5).
-     * @param _feedback Feedback text.
-     */
-    function submitRating(address _ratedUser, uint8 _score, string calldata _feedback) external {
-        require(_ratedUser != address(0), "Invalid user address");
-        require(_score >= 1 && _score <= 5, "Score must be between 1 and 5");
-
-        totalRatings++;
-        ratings[totalRatings] = Rating(totalRatings, msg.sender, _ratedUser, _score, _feedback);
-        userRatings[_ratedUser].push(totalRatings);
-
-        emit RatingSubmitted(totalRatings, msg.sender, _ratedUser, _score, _feedback);
+    modifier onlyAdmin() {
+        require(msg.sender == admin, "Only admin can perform this action");
+        _;
     }
 
-    /**
-     * @dev Get average rating of a user.
-     * @param _user The address of the user to check.
-     * @return average rating score.
-     */
-    function getAverageRating(address _user) external view returns (uint256) {
-        uint256[] memory userRatingIds = userRatings[_user];
-        if (userRatingIds.length == 0) return 0;
+    modifier onlyRegistered() {
+        require(users[msg.sender].registered, "User not registered");
+        _;
+    }
 
-        uint256 totalScore = 0;
-        for (uint256 i = 0; i < userRatingIds.length; i++) {
-            totalScore += ratings[userRatingIds[i]].score;
-        }
-        return totalScore / userRatingIds.length;
+    constructor() {
+        admin = msg.sender;
     }
 
     /**
-     * @dev Get details of a specific rating by ID.
+     * @notice Register a new user profile
+     * @param _name The display name of the user
      */
-    function getRating(uint256 _id) external view returns (address, address, uint8, string memory) {
-        require(_id > 0 && _id <= totalRatings, "Rating does not exist");
-        Rating memory r = ratings[_id];
-        return (r.rater, r.ratedUser, r.score, r.feedback);
+    function registerUser(string memory _name) external {
+        require(!users[msg.sender].registered, "User already registered");
+        require(bytes(_name).length > 0, "Name cannot be empty");
+
+        userCount++;
+        users[msg.sender] = UserProfile(userCount, msg.sender, _name, 50, 0, true); // Default trust score = 50
+
+        emit UserRegistered(userCount, msg.sender, _name);
+    }
+
+    /**
+     * @notice Endorse another user's trust score
+     * @param _target The address of the user to endorse
+     */
+    function endorseTrust(address _target) external onlyRegistered {
+        require(users[_target].registered, "Target user not registered");
+        require(_target != msg.sender, "Cannot endorse yourself");
+
+        users[_target].endorsements++;
+        users[_target].trustScore += 1;
+
+        emit TrustEndorsed(msg.sender, _target, users[_target].trustScore);
+    }
+
+    /**
+     * @notice Admin can adjust a user's trust score in case of fraud or misuse
+     * @param _target The address of the user
+     * @param _newScore The new trust score to set
+     */
+    function updateTrustScore(address _target, uint256 _newScore) external onlyAdmin {
+        require(users[_target].registered, "User not registered");
+        users[_target].trustScore = _newScore;
+
+        emit TrustScoreUpdated(_target, _newScore);
+    }
+
+    /**
+     * @notice View a user's profile details
+     * @param _user Address of the user
+     */
+    function getUserProfile(address _user) external view returns (UserProfile memory) {
+        require(users[_user].registered, "User not registered");
+        return users[_user];
     }
 }
-// 
-update
-// 
